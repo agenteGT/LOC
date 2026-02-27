@@ -1,0 +1,4 @@
+# Dependencias Python para Kogito DMN Test Runner
+requests>=2.31.0
+pandas>=2.1.0
+openpyxl>=3.1.2

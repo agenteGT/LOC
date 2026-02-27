@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/"
+             id="_loc_calc_model"
+             name="LOCCalculation"
+             namespace="https://kie.org/dmn/loc-calculation"
+             expressionLanguage="https://www.omg.org/spec/DMN/20191111/FEEL/"
+             typeLanguage="https://www.omg.org/spec/DMN/20191111/FEEL/">
+
+  <!-- ============================================================ -->
+  <!-- Reglas de Decisión LOC (Line of Credit)                      -->
+  <!--                                                              -->
+  <!-- Cascada:  Inputs                                             -->
+  <!--              ↓                                               -->
+  <!--        Limpieza de Datos                                     -->
+  <!--              ↓                                               -->
+  <!--         Calculos LOC                                         -->
+  <!--              ↓                                               -->
+  <!--          LOC Result                                          -->
+  <!--                                                              -->
+  <!-- Endpoint Kogito: POST /LOCCalculation                        -->
+  <!-- ============================================================ -->
+
+  <!-- ============================================================ -->
+  <!-- TIPOS PERSONALIZADOS                                         -->
+  <!-- ============================================================ -->
+
+  <!-- Tipo intermedio: datos limpios -->
+  <itemDefinition id="_tCleanedData" name="tCleanedData" isCollection="false">
+    <itemComponent id="_tCD_imd" name="cleanedIMD">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCD_term" name="cleanedTerm">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCD_fee" name="cleanedFee">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCD_roundUnit" name="cleanedRoundUnit">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCD_maxCap" name="cleanedMaxCap">
+      <typeRef>number</typeRef>
+    </itemComponent>
+  </itemDefinition>
+
+  <!-- Tipo intermedio: cálculos -->
+  <itemDefinition id="_tCalcData" name="tCalcData" isCollection="false">
+    <itemComponent id="_tCalc_validation" name="validation">
+      <typeRef>string</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCalc_rawAmount" name="rawAmount">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCalc_roundedAmount" name="roundedAmount">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCalc_maxAmount" name="maxAmount">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCalc_interest" name="interest">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tCalc_totalDebt" name="totalDebt">
+      <typeRef>number</typeRef>
+    </itemComponent>
+  </itemDefinition>
+
+  <!-- Tipo final: resultado LOC -->
+  <itemDefinition id="_tLOCResult" name="tLOCResult" isCollection="false">
+    <itemComponent id="_tLR_rawAmount" name="rawAmount">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tLR_maxAmount" name="maxAmount">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tLR_interest" name="interest">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tLR_totalDebt" name="totalDebt">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="_tLR_status" name="status">
+      <typeRef>string</typeRef>
+    </itemComponent>
+    <itemComponent id="_tLR_reason" name="reason">
+      <typeRef>string</typeRef>
+    </itemComponent>
+  </itemDefinition>
+
+  <!-- ============================================================ -->
+  <!-- INPUT DATA (6 entradas)                                      -->
+  <!-- ============================================================ -->
+
+  <inputData id="_in_productType" name="productType">
+    <variable id="_var_in_productType" name="productType" typeRef="string"/>
+  </inputData>
+
+  <inputData id="_in_imd" name="imd">
+    <variable id="_var_in_imd" name="imd" typeRef="number"/>
+  </inputData>
+
+  <inputData id="_in_term" name="term">
+    <variable id="_var_in_term" name="term" typeRef="number"/>
+  </inputData>
+
+  <inputData id="_in_fee" name="fee">
+    <variable id="_var_in_fee" name="fee" typeRef="number"/>
+  </inputData>
+
+  <inputData id="_in_roundUnit" name="roundUnit">
+    <variable id="_var_in_roundUnit" name="roundUnit" typeRef="number"/>
+  </inputData>
+
+  <inputData id="_in_maxCap" name="maxCap">
+    <variable id="_var_in_maxCap" name="maxCap" typeRef="number"/>
+  </inputData>
+
+  <!-- ============================================================ -->
+  <!-- DECISIÓN 1: LIMPIEZA DE DATOS                                -->
+  <!-- Normaliza nulos y negativos a 0. roundUnit menor o igual a 0 pasa a 1. -->
+  <!-- Entrada: 5 inputs numéricos                                  -->
+  <!-- Salida: tCleanedData                                         -->
+  <!-- ============================================================ -->
+
+  <decision id="_dec_limpieza" name="Limpieza de Datos">
+    <description>Normaliza valores: null y negativos se convierten a 0. roundUnit menor o igual a 0 pasa a 1 para evitar division por cero.</description>
+    <variable id="_dvar_limpieza" name="Limpieza de Datos" typeRef="tCleanedData"/>
+    <informationRequirement id="_ir_limp_imd">
+      <requiredInput href="#_in_imd"/>
+    </informationRequirement>
+    <informationRequirement id="_ir_limp_term">
+      <requiredInput href="#_in_term"/>
+    </informationRequirement>
+    <informationRequirement id="_ir_limp_fee">
+      <requiredInput href="#_in_fee"/>
+    </informationRequirement>
+    <informationRequirement id="_ir_limp_ru">
+      <requiredInput href="#_in_roundUnit"/>
+    </informationRequirement>
+    <informationRequirement id="_ir_limp_mc">
+      <requiredInput href="#_in_maxCap"/>
+    </informationRequirement>
+    <context id="_ctx_limpieza">
+      <contextEntry>
+        <variable name="cleanedIMD" typeRef="number"/>
+        <literalExpression>
+          <text>if imd = null then 0 else if imd &lt; 0 then 0 else imd</text>
+        </literalExpression>
+      </contextEntry>
+      <contextEntry>
+        <variable name="cleanedTerm" typeRef="number"/>
+        <literalExpression>
+          <text>if term = null then 0 else if term &lt; 0 then 0 else term</text>
+        </literalExpression>
+      </contextEntry>
+      <contextEntry>
+        <variable name="cleanedFee" typeRef="number"/>
+        <literalExpression>
+          <text>if fee = null then 0 else if fee &lt; 0 then 0 else fee</text>
+        </literalExpression>
+      </contextEntry>
+      <contextEntry>
+        <variable name="cleanedRoundUnit" typeRef="number"/>
+        <literalExpression>
+          <text>if roundUnit = null then 1 else if roundUnit &lt;= 0 then 1 else roundUnit</text>
+        </literalExpression>
+      </contextEntry>
+      <contextEntry>
+        <variable name="cleanedMaxCap" typeRef="number"/>
+        <literalExpression>
+          <text>if maxCap = null then 0 else if maxCap &lt;= 0 then 0 else maxCap</text>
+        </literalExpression>
+      </contextEntry>
+      <!-- Resultado: estructura completa -->
+      <contextEntry>
+        <literalExpression>
+          <text>{cleanedIMD: cleanedIMD, cleanedTerm: cleanedTerm, cleanedFee: cleanedFee, cleanedRoundUnit: cleanedRoundUnit, cleanedMaxCap: cleanedMaxCap}</text>
+        </literalExpression>
+      </contextEntry>
+    </context>
+  </decision>
+
+  <!-- ============================================================ -->
+  <!-- DECISIÓN 2: CÁLCULOS LOC                                    -->
+  <!-- Validación (Hard Gates) + Fórmulas matemáticas               -->
+  <!--                                                              -->
+  <!-- Validación:                                                  -->
+  <!--   productType != "LOC"       → "Producto no LOC"             -->
+  <!--   IMD == 0                   → "IMD es 0"                    -->
+  <!--   term not in [2,3,4,5]      → "Plazo invalido"              -->
+  <!--   fee == 0                   → "Fee es 0"                    -->
+  <!--                                                              -->
+  <!-- Fórmulas:                                                    -->
+  <!--   C1 = (IMD x term) / (1 + fee)                              -->
+  <!--   maxAmount = min(floor(C1 / roundUnit) * roundUnit, maxCap) -->
+  <!--   interest  = maxAmount x fee                                 -->
+  <!--   totalDebt = maxAmount x (1 + fee)                           -->
+  <!-- ============================================================ -->
+
+  <decision id="_dec_calculos" name="Calculos LOC">
+    <description>Valida reglas de negocio y calcula montos, intereses y deuda. Solo calcula si la validacion es VALID.</description>
+    <variable id="_dvar_calculos" name="Calculos LOC" typeRef="tCalcData"/>
+    <informationRequirement id="_ir_calc_limp">
+      <requiredDecision href="#_dec_limpieza"/>
+    </informationRequirement>
+    <informationRequirement id="_ir_calc_pt">
+      <requiredInput href="#_in_productType"/>
+    </informationRequirement>
+    <context id="_ctx_calculos">
+
+      <!-- === Validación (Hard Gates) === -->
+      <contextEntry>
+        <variable name="validation" typeRef="string"/>
+        <literalExpression>
+          <text>if productType != "LOC" then "Producto no LOC"
+else if Limpieza de Datos.cleanedIMD = 0 then "IMD es 0"
+else if not(Limpieza de Datos.cleanedTerm in [2, 3, 4, 5]) then "Plazo invalido"
+else if Limpieza de Datos.cleanedFee = 0 then "Fee es 0"
+else "VALID"</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- === C1: Monto Bruto = (IMD * term) / (1 + fee) === -->
+      <contextEntry>
+        <variable name="rawAmount" typeRef="number"/>
+        <literalExpression>
+          <text>if validation != "VALID" then 0
+else (Limpieza de Datos.cleanedIMD * Limpieza de Datos.cleanedTerm) / (1 + Limpieza de Datos.cleanedFee)</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- === Redondeo hacia abajo por roundUnit === -->
+      <contextEntry>
+        <variable name="roundedAmount" typeRef="number"/>
+        <literalExpression>
+          <text>floor(rawAmount / Limpieza de Datos.cleanedRoundUnit) * Limpieza de Datos.cleanedRoundUnit</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- === Aplicar techo (cap) === -->
+      <contextEntry>
+        <variable name="maxAmount" typeRef="number"/>
+        <literalExpression>
+          <text>if validation != "VALID" then 0
+else if Limpieza de Datos.cleanedMaxCap > 0 then min(roundedAmount, Limpieza de Datos.cleanedMaxCap)
+else roundedAmount</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- === Intereses = maxAmount * fee === -->
+      <contextEntry>
+        <variable name="interest" typeRef="number"/>
+        <literalExpression>
+          <text>maxAmount * Limpieza de Datos.cleanedFee</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- === Deuda Total = maxAmount * (1 + fee) === -->
+      <contextEntry>
+        <variable name="totalDebt" typeRef="number"/>
+        <literalExpression>
+          <text>maxAmount * (1 + Limpieza de Datos.cleanedFee)</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- Resultado: estructura completa de cálculos -->
+      <contextEntry>
+        <literalExpression>
+          <text>{validation: validation, rawAmount: rawAmount, roundedAmount: roundedAmount, maxAmount: maxAmount, interest: interest, totalDebt: totalDebt}</text>
+        </literalExpression>
+      </contextEntry>
+    </context>
+  </decision>
+
+  <!-- ============================================================ -->
+  <!-- DECISIÓN 3: LOC RESULT (Salida Final)                        -->
+  <!-- Genera la estructura de respuesta con status y razón.        -->
+  <!-- ============================================================ -->
+
+  <decision id="_dec_locResult" name="LOC Result">
+    <description>Empaqueta el resultado final: montos, status (APPROVED/REJECTED) y razon de rechazo.</description>
+    <variable id="_dvar_locResult" name="LOC Result" typeRef="tLOCResult"/>
+    <informationRequirement id="_ir_result_calc">
+      <requiredDecision href="#_dec_calculos"/>
+    </informationRequirement>
+    <context id="_ctx_locResult">
+
+      <contextEntry>
+        <variable name="rawAmount" typeRef="number"/>
+        <literalExpression>
+          <text>Calculos LOC.rawAmount</text>
+        </literalExpression>
+      </contextEntry>
+
+      <contextEntry>
+        <variable name="maxAmount" typeRef="number"/>
+        <literalExpression>
+          <text>Calculos LOC.maxAmount</text>
+        </literalExpression>
+      </contextEntry>
+
+      <contextEntry>
+        <variable name="interest" typeRef="number"/>
+        <literalExpression>
+          <text>Calculos LOC.interest</text>
+        </literalExpression>
+      </contextEntry>
+
+      <contextEntry>
+        <variable name="totalDebt" typeRef="number"/>
+        <literalExpression>
+          <text>Calculos LOC.totalDebt</text>
+        </literalExpression>
+      </contextEntry>
+
+      <contextEntry>
+        <variable name="status" typeRef="string"/>
+        <literalExpression>
+          <text>if Calculos LOC.validation = "VALID" and Calculos LOC.maxAmount > 0 then "APPROVED" else "REJECTED"</text>
+        </literalExpression>
+      </contextEntry>
+
+      <contextEntry>
+        <variable name="reason" typeRef="string"/>
+        <literalExpression>
+          <text>if Calculos LOC.validation != "VALID" then Calculos LOC.validation
+else if Calculos LOC.maxAmount &lt;= 0 then "Monto calculado es 0"
+else null</text>
+        </literalExpression>
+      </contextEntry>
+
+      <!-- Resultado final -->
+      <contextEntry>
+        <literalExpression>
+          <text>{rawAmount: rawAmount, maxAmount: maxAmount, interest: interest, totalDebt: totalDebt, status: status, reason: reason}</text>
+        </literalExpression>
+      </contextEntry>
+    </context>
+  </decision>
+
+  <!-- ============================================================ -->
+  <!-- DMNDI: Layout en Cascada para KIE Sandbox                    -->
+  <!--                                                              -->
+  <!--        ┌──────────────┐                                      -->
+  <!--        │  LOC Result  │  ← Fila 1 (output final)            -->
+  <!--        └──────┬───────┘                                      -->
+  <!--        ┌──────┴───────┐                                      -->
+  <!--        │ Calculos LOC │  ← Fila 2 (validación + math)       -->
+  <!--        └──────┬───────┘                                      -->
+  <!--        ┌──────┴───────┐                                      -->
+  <!--        │  Limpieza    │  ← Fila 3 (data cleansing)          -->
+  <!--        └──────┬───────┘                                      -->
+  <!--   ┌──┬──┬─────┼───┬──┬──┐                                   -->
+  <!--   pt imd tm  fee  ru mc    ← Fila 4 (inputs)               -->
+  <!-- ============================================================ -->
+
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="_diagram_loc" name="LOC Calculation Cascade">
+
+      <!-- === FILA 1: LOC Result (salida final) - ARRIBA === -->
+      <dmndi:DMNShape id="_shape_locResult" dmnElementRef="_dec_locResult" isCollapsed="false">
+        <dc:Bounds x="355" y="60" width="250" height="60"/>
+      </dmndi:DMNShape>
+
+      <!-- === FILA 2: Calculos LOC (validación + fórmulas) === -->
+      <dmndi:DMNShape id="_shape_calculos" dmnElementRef="_dec_calculos" isCollapsed="false">
+        <dc:Bounds x="355" y="230" width="250" height="60"/>
+      </dmndi:DMNShape>
+
+      <!-- === FILA 3: Limpieza de Datos (data cleansing) === -->
+      <dmndi:DMNShape id="_shape_limpieza" dmnElementRef="_dec_limpieza" isCollapsed="false">
+        <dc:Bounds x="355" y="400" width="250" height="60"/>
+      </dmndi:DMNShape>
+
+      <!-- === FILA 4: Inputs (datos de entrada) - ABAJO === -->
+      <dmndi:DMNShape id="_shape_in_productType" dmnElementRef="_in_productType">
+        <dc:Bounds x="55" y="580" width="130" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_in_imd" dmnElementRef="_in_imd">
+        <dc:Bounds x="215" y="580" width="120" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_in_term" dmnElementRef="_in_term">
+        <dc:Bounds x="365" y="580" width="120" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_in_fee" dmnElementRef="_in_fee">
+        <dc:Bounds x="515" y="580" width="120" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_in_roundUnit" dmnElementRef="_in_roundUnit">
+        <dc:Bounds x="665" y="580" width="130" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="_shape_in_maxCap" dmnElementRef="_in_maxCap">
+        <dc:Bounds x="825" y="580" width="120" height="60"/>
+      </dmndi:DMNShape>
+
+      <!-- === EDGES: Inputs → Limpieza de Datos === -->
+      <dmndi:DMNEdge id="_edge_imd_limp" dmnElementRef="_ir_limp_imd">
+        <di:waypoint x="275" y="580"/>
+        <di:waypoint x="420" y="460"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_term_limp" dmnElementRef="_ir_limp_term">
+        <di:waypoint x="425" y="580"/>
+        <di:waypoint x="450" y="460"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_fee_limp" dmnElementRef="_ir_limp_fee">
+        <di:waypoint x="575" y="580"/>
+        <di:waypoint x="510" y="460"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_ru_limp" dmnElementRef="_ir_limp_ru">
+        <di:waypoint x="730" y="580"/>
+        <di:waypoint x="540" y="460"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="_edge_mc_limp" dmnElementRef="_ir_limp_mc">
+        <di:waypoint x="885" y="580"/>
+        <di:waypoint x="570" y="460"/>
+      </dmndi:DMNEdge>
+
+      <!-- === EDGE: productType → Cálculos LOC (salta limpieza) === -->
+      <dmndi:DMNEdge id="_edge_pt_calc" dmnElementRef="_ir_calc_pt">
+        <di:waypoint x="120" y="580"/>
+        <di:waypoint x="120" y="260"/>
+        <di:waypoint x="355" y="260"/>
+      </dmndi:DMNEdge>
+
+      <!-- === EDGE: Limpieza → Cálculos LOC === -->
+      <dmndi:DMNEdge id="_edge_limp_calc" dmnElementRef="_ir_calc_limp">
+        <di:waypoint x="480" y="400"/>
+        <di:waypoint x="480" y="290"/>
+      </dmndi:DMNEdge>
+
+      <!-- === EDGE: Cálculos LOC → LOC Result === -->
+      <dmndi:DMNEdge id="_edge_calc_result" dmnElementRef="_ir_result_calc">
+        <di:waypoint x="480" y="230"/>
+        <di:waypoint x="480" y="120"/>
+      </dmndi:DMNEdge>
+
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+
+</definitions>

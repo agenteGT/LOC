@@ -1,0 +1,44 @@
+# =============================================================================
+# .gitignore - Proyecto LOC (Kogito DMN)
+# =============================================================================
+
+# --- macOS ---
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/settings.json
+.project
+.classpath
+.settings/
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+venv/
+.env
+
+# --- Output generado ---
+04 Output/*.xlsx
+
+# --- Temporales de Office ---
+~$*
